@@ -1,8 +1,8 @@
-# ASE Lead Qualification Pipeline
+# AI Voice Call Lead Qualification Pipeline
 
 ## About This Project
 
-ASE Lead Qualification Pipeline is a fully local AI powered system that automates the process of qualifying sales leads. It replaces the manual work of calling prospects and asking them questions by running an automated voice session directly in the browser. The system handles everything from collecting lead details to scoring them and alerting the sales team without any human involvement in between.
+AI Voice Call Lead Qualification Pipeline is a fully local AI powered system that automates the process of qualifying sales leads. It replaces the manual work of calling prospects and asking them questions by running an automated voice session directly in the browser. The system handles everything from collecting lead details to scoring them and alerting the sales team without any human involvement in between.
 
 Sales teams waste hours calling unqualified leads who have no budget no timeline or no decision making power. By the time a sales rep speaks to a prospect they often have no context about what the person needs or whether they are worth pursuing. This project solves that by automatically running a qualification call before any human gets involved saving time and ensuring reps only speak to leads that are actually worth their attention.
 

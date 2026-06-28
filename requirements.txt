@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+openai-whisper
+sounddevice
+pyttsx3
+ollama
+phonenumbers
+email-validator
+python-dotenv
+streamlit
+pandas
+requests
+websockets
+python-multipart
+numpy

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASE Qualification Session</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px 48px;
+      max-width: 640px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    }
+    h1 { font-size: 1.5rem; color: #1a73e8; margin-bottom: 6px; }
+    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 28px; }
+    .progress-bar-outer {
+      background: #e8f0fe;
+      border-radius: 8px;
+      height: 8px;
+      margin-bottom: 24px;
+    }
+    .progress-bar-inner {
+      background: #1a73e8;
+      height: 8px;
+      border-radius: 8px;
+      transition: width 0.5s;
+      width: 0%;
+    }
+    #question-box {
+      background: #f8f9ff;
+      border-left: 4px solid #1a73e8;
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      font-size: 1.05rem;
+      color: #222;
+      min-height: 60px;
+      margin-bottom: 20px;
+    }
+    #ack-box {
+      color: #34a853;
+      font-style: italic;
+      font-size: 0.95rem;
+      min-height: 24px;
+      margin-bottom: 20px;
+    }
+    #status {
+      color: #888;
+      font-size: 0.88rem;
+      margin-bottom: 18px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 32px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    #start-btn { background: #1a73e8; color: #fff; }
+    #start-btn:hover { background: #1558b0; }
+    #record-btn { background: #ea4335; color: #fff; display: none; }
+    #record-btn:hover { background: #c62828; }
+    #record-btn.recording { background: #fbbc04; color: #333; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+    .complete-msg {
+      text-align: center;
+      color: #34a853;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 20px 0;
+    }
+    .q-counter { color: #aaa; font-size: 0.82rem; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>ASE Qualification Session</h1>
+  <p class="subtitle">We'll ask you 8 short questions. Please answer out loud after each one.</p>
+
+  <div class="progress-bar-outer">
+    <div class="progress-bar-inner" id="progress"></div>
+  </div>
+
+  <div class="q-counter" id="q-counter">Question 0 of 8</div>
+  <div id="question-box">Click "Start Session" to begin.</div>
+  <div id="ack-box"></div>
+  <div id="status"></div>
+
+  <button class="btn" id="start-btn" onclick="startSession()">▶ Start Session</button>
+  <button class="btn" id="record-btn" onclick="stopRecording()">⏹ Done Speaking</button>
+</div>
+
+<script>
+const LEAD_ID = "__SESSION_ID__";
+const WS_URL  = `ws://${location.host}/ws/${LEAD_ID}`;
+
+let ws, mediaRecorder, chunks = [];
+
+function setStatus(msg) { document.getElementById("status").textContent = msg; }
+function setQuestion(text) { document.getElementById("question-box").textContent = text; }
+function setAck(text) { document.getElementById("ack-box").textContent = text; }
+function setProgress(n) {
+  document.getElementById("progress").style.width = `${(n/8)*100}%`;
+  document.getElementById("q-counter").textContent = `Question ${n} of 8`;
+}
+
+function startSession() {
+  document.getElementById("start-btn").style.display = "none";
+  setStatus("Connecting...");
+  ws = new WebSocket(WS_URL);
+  ws.binaryType = "arraybuffer";
+
+  ws.onopen = () => setStatus("Connected. Waiting for first question...");
+  ws.onerror = () => setStatus("Connection error. Please refresh.");
+
+  ws.onmessage = async (event) => {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === "question") {
+      setAck("");
+      setQuestion(msg.text);
+      setProgress(msg.index + 1);
+    }
+
+    if (msg.type === "recording_start") {
+      setStatus("🎤 Recording — speak your answer, then click Done Speaking.");
+      document.getElementById("record-btn").style.display = "inline-block";
+      document.getElementById("record-btn").classList.add("recording");
+      await startRecording();
+    }
+
+    if (msg.type === "ack") {
+      setAck("✓ " + msg.text);
+      setStatus("Next question loading...");
+    }
+
+    if (msg.type === "session_complete") {
+      document.getElementById("record-btn").style.display = "none";
+      setProgress(8);
+      document.getElementById("question-box").innerHTML =
+        `<div class="complete-msg">✅ Session Complete!<br><small style="color:#666;font-weight:400;">${msg.text}</small></div>`;
+      setAck("");
+      setStatus("Thank you! You may close this tab.");
+    }
+  };
+}
+
+async function startRecording() {
+  chunks = [];
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 48000, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+    ? 'audio/webm;codecs=opus' : 'audio/webm';
+  mediaRecorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128000 });
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: "audio/webm" });
+    const buffer = await blob.arrayBuffer();
+    ws.send(buffer);
+    setStatus("Processing your answer...");
+    document.getElementById("record-btn").style.display = "none";
+    document.getElementById("record-btn").classList.remove("recording");
+    stream.getTracks().forEach(t => t.stop());
+  };
+  mediaRecorder.start();
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
+}
+</script>
+</body>
+</html>
